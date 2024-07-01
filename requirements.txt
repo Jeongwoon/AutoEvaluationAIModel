@@ -2,6 +2,4 @@ streamlit
 numpy
 pandas
 fuzzywuzzy
-typing
 plotly
-sklearn.metrics
