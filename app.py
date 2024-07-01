@@ -73,16 +73,16 @@ def validate_pred_column(df: pd.DataFrame, pred_col: str) -> Tuple[bool, str, fl
     else:
         return False, f"예측 컬럼 '{pred_col}'의 값이 0~1 또는 0~100 범위를 벗어납니다. (현재 범위: {pred_min:.2f}~{pred_max:.2f})", pred_min, pred_max
     
-    return True, f"예측 컬럼 '{pred_col}'은 {scale} 스케일입니다.", pred_min, pred_max
+    return True, f"예측 컬럼 '{pred_col}'is {scale} 스케일입니다.", pred_min, pred_max
 
 def validate_gt_column(df: pd.DataFrame, gt_col: str) -> Tuple[bool, str]:
     if gt_col is None:
         return False, "정답 컬럼을 선택해주세요."
     
     if not is_binary(df[gt_col]):
-        return False, f"정답 컬럼 '{gt_col}'이/가 이진 분류가 아닙니다."
+        return False, f"정답 컬럼 '{gt_col}'is 이진 분류가 아닙니다."
     
-    return True, f"정답 컬럼 '{gt_col}'이/가 이진 분류입니다."
+    return True, f"정답 컬럼 '{gt_col}'is 이진 분류입니다."
 
 def display_data_info(df: pd.DataFrame):
     st.subheader("데이터셋 정보")
@@ -122,10 +122,6 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
         if score_max > 1:
             y_score = y_score / 100  # 0-100 스케일을 0-1로 변환
             threshold = threshold / 100  # 임계값도 함께 변환
-
-        # ROC AUC
-        roc_auc = roc_auc_score(y_true, y_score)
-        st.write(f"ROC AUC: {roc_auc:.4f}")
         
         # 스코어를 이진 예측으로 변환
         y_pred = (y_score > threshold).astype(int)
@@ -134,12 +130,27 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
         cm = confusion_matrix(y_true, y_pred)
         
         # Confusion Matrix 시각화
+        
         labels = ['뇌출혈 음성', '뇌출혈 양성']
+        label_size=20
         cm_fig = ff.create_annotated_heatmap(
             z=cm, x=labels, y=labels, colorscale='Blues',
             annotation_text=cm
         )
-        cm_fig.update_layout(title_text='Confusion Matrix', xaxis_title='예측', yaxis_title='실제')
+        # cm_fig.update_layout(title_text='Confusion Matrix', xaxis_title='예측', yaxis_title='실제')
+        cm_fig.update_layout(
+            title_text='Confusion Matrix', 
+            xaxis_title='예측', 
+            yaxis_title='실제',
+            font=dict(size=label_size),  # 전체 폰트 크기 증가
+            xaxis_title_font=dict(size=label_size),
+            yaxis_title_font=dict(size=label_size),
+            xaxis=dict(tickfont=dict(size=label_size)),  # x축 레이블 크기 조정
+            yaxis=dict(tickfont=dict(size=label_size)),   # y축 레이블 크기 조정
+            height=500,  # 높이 증가
+            width=600,   # 너비 증가
+        )
+        
         st.plotly_chart(cm_fig)
 
         # Classification Report
@@ -160,16 +171,23 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
         for metric, value in metrics.items():
             st.write(f"{metric}: {value:.4f}")
 
+        # ROC AUC
+        roc_auc = roc_auc_score(y_true, y_score)
+        st.markdown(f"**ROC AUC: {roc_auc:.4f}**")
+
         # ROC Curve
-        fpr, tpr, _ = roc_curve(y_true, y_score)
+        fpr, tpr, thresholds = roc_curve(y_true, y_score)
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', name=f'ROC curve (AUC = {roc_auc:.4f})'))
         fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Random', line=dict(dash='dash')))
-        fig.add_trace(go.Scatter(x=[fpr[np.argmin(np.abs(tpr - threshold))]], 
-                                 y=[tpr[np.argmin(np.abs(tpr - threshold))]], 
-                                 mode='markers', 
-                                 name=f'Threshold ({threshold:.2f})', 
-                                 marker=dict(size=10)))
+
+        # 주어진 threshold에 가장 가까운 값을 찾습니다
+        idx = np.argmin(np.abs(thresholds - threshold))
+        fig.add_trace(go.Scatter(x=[fpr[idx]], y=[tpr[idx]], 
+                                mode='markers', 
+                                name=f'Threshold ({threshold:.2f})', 
+                                marker=dict(size=10)))
+
         fig.update_layout(
             title='Receiver Operating Characteristic (ROC) Curve',
             xaxis_title='위양성률 (False Positive Rate)',
@@ -185,8 +203,8 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
         fig.add_trace(go.Histogram(x=y_score[y_true == 0], name='뇌출혈 음성', opacity=0.7))
         fig.add_trace(go.Histogram(x=y_score[y_true == 1], name='뇌출혈 양성', opacity=0.7))
         fig.add_trace(go.Scatter(x=[threshold, threshold], y=[0, y_score.shape[0]//2], 
-                                 mode='lines', name='임계값', 
-                                 line=dict(color='red', width=2, dash='dash')))
+                                mode='lines', name='임계값', 
+                                line=dict(color='red', width=2, dash='dash')))
         fig.update_layout(
             title='예측 스코어 분포',
             xaxis_title='예측 스코어',
@@ -258,7 +276,7 @@ def main():
                 
                 # 양성 레이블 선택
                 unique_values = df[selected_gt_col].unique()
-                positive_label = st.selectbox("양성(뇌출혈) 레이블 선택", unique_values, index=0 if len(unique_values) > 1 else 0)
+                positive_label = st.selectbox("양성(뇌출혈 등) 레이블 선택", unique_values, index=0 if len(unique_values) > 1 else 0)
                 
                 # 임계값 설정
                 if pred_max <= 1:
