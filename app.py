@@ -204,7 +204,7 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
         st.write("데이터 및 선택한 컬럼을 다시 확인해주세요.")
 
 def main():
-    st.title('분류모델 성능 시각화')
+    st.title('분류모델 성능 평가')
     
     # 세션 상태 초기화
     if 'file_uploaded' not in st.session_state:
