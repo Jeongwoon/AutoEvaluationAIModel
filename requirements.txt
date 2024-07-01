@@ -4,3 +4,4 @@ pandas
 fuzzywuzzy
 plotly
 scikit-learn==1.3.2
+openpyxl
