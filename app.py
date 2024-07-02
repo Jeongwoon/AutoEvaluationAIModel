@@ -232,8 +232,24 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
         # Classification Report
         class_report = classification_report(y_true, y_pred, target_names=labels, output_dict=True)
         df_class_report = pd.DataFrame(class_report).transpose()
+        # 'support' 열을 정수로 변환
+        df_class_report['support'] = df_class_report['support'].astype(int)
+
+        # 소수점 자리수 조정
+        df_class_report = df_class_report.round(4)
+
+        # DataFrame 
+        # styled_df = df_class_report.style.format("{:.4f}")
+        styled_df = df_class_report.style.format({
+            'precision': '{:.3f}',
+            'recall': '{:.3f}',
+            'f1-score': '{:.3f}',
+            'support': '{:.0f}'
+        })
+        
         st.markdown("**Classification Report:**")
-        st.dataframe(df_class_report.style.format("{:.4f}"))
+        st.table(styled_df)
+        # st.dataframe(styled_df)
         
         # True Negative, False Positive, False Negative, True Positive
         tn, fp, fn, tp = cm.ravel()
