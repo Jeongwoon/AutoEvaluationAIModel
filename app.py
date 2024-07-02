@@ -173,7 +173,7 @@ def cohen_kappa(y_true, y_pred):
     kappa = cohen_kappa_score(y_true, y_pred)
     return {
         "method": "Cohen's Kappa",
-        "description": "모델의 예측과 실제 값 사이의 일치도를 평가합니다. 일반적으로 두 평가자 간의 일치도를 측정하지만, 여기서는 모델 예측과 실제 값의 일치도를 측정합니다.",
+        "description": "모델의 예측과 실제 값 사이의 일치도를 평가합니다. 일반적으로 두 평가자 간의 일치도를 측정하지만, 여기서는 모델 예측과 실제 값의 일치도를 측정합니다. (일치도가 1이면 완전 일치)",
         "kappa": kappa
     }
 
