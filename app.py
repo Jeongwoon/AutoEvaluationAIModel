@@ -228,6 +228,23 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
         )
         
         st.plotly_chart(cm_fig)
+        
+        # True Negative, False Positive, False Negative, True Positive
+        tn, fp, fn, tp = cm.ravel()
+
+        # 양성예측도 (Positive Predictive Value, PPV) = Precision
+        ppv = tp / (tp + fp)
+
+        # 음성예측도 (Negative Predictive Value, NPV)
+        npv = tn / (tn + fn)
+
+        st.markdown("**혼동 행렬 (Confusion Matrix) 구성 요소**")
+        
+        st.write(f"**TP (True Positive):** 모델이 양성이라고 예측했고, 실제로 양성인 경우 (정답): **{tp}**")
+        st.write(f"**TN (True Negative):** 모델이 음성이라고 예측했고, 실제로 음성인 경우 (정답): **{tn}**")
+        st.write(f"**FP (False Positive):** 모델이 양성이라고 예측했지만, 실제로는 음성인 경우 (오답): **{fp}**")
+        st.write(f"**FN (False Negative):** 모델이 음성이라고 예측했지만, 실제로는 양성인 경우 (오답): **{fn}**")
+        st.write("")
 
         # Classification Report
         class_report = classification_report(y_true, y_pred, target_names=labels, output_dict=True)
@@ -250,46 +267,122 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
         st.markdown("**Classification Report:**")
         st.table(styled_df)
         # st.dataframe(styled_df)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**Performance Metrics(간략)**")
+            # Performance Metrics
+            metrics = {
+                "민감도 (Sensitivity/Recall)": recall_score(y_true, y_pred),
+                "특이도 (Specificity)": cm[0, 0] / (cm[0, 0] + cm[0, 1]),
+                "정확도 (Accuracy)": accuracy_score(y_true, y_pred),
+                "정밀도 (Precision)": precision_score(y_true, y_pred),
+                "F1 Score": f1_score(y_true, y_pred),
+                "양성예측도 (Positive Predictive Value, PPV)": ppv,
+                "음성예측도 (Negative Predictive Value, NPV)": npv
+            }
+
+            for metric, value in metrics.items():
+                st.write(f"**{metric}: {value:.4f}**")
+
+            # ROC AUC
+            roc_auc = roc_auc_score(y_true, y_score)
+            st.markdown(f"**ROC AUC: {roc_auc:.4f}**")
+
         
-        # True Negative, False Positive, False Negative, True Positive
-        tn, fp, fn, tp = cm.ravel()
+        with col2:    
+            st.markdown("**Performance Metrics(상세)**")
+            # 민감도 (Sensitivity/Recall)
+            sensitivity = tp / (tp + fn)
+            st.markdown(f"""
+            **민감도 (Sensitivity/Recall):** {sensitivity:.4f}
+            * 설명: 실제 양성 중 모델이 양성으로 정확히 예측한 비율
+            * 계산식: TP / (TP + FN) = {tp} / ({tp} + {fn})
+            """)
 
-        # 양성예측도 (Positive Predictive Value, PPV) = Precision
-        ppv = tp / (tp + fp)
+            # 특이도 (Specificity)
+            specificity = tn / (tn + fp)
+            st.markdown(f"""
+            **특이도 (Specificity):** {specificity:.4f}
+            * 설명: 실제 음성 중 모델이 음성으로 정확히 예측한 비율
+            * 계산식: TN / (TN + FP) = {tn} / ({tn} + {fp})
+            """)
 
-        # 음성예측도 (Negative Predictive Value, NPV)
-        npv = tn / (tn + fn)
+            # 정확도 (Accuracy)
+            accuracy = (tp + tn) / (tp + tn + fp + fn)
+            st.markdown(f"""
+            **정확도 (Accuracy):** {accuracy:.4f}
+            * 설명: 전체 예측 중 모델이 정확히 예측한 비율
+            * 계산식: (TP + TN) / (TP + TN + FP + FN) = ({tp} + {tn}) / ({tp} + {tn} + {fp} + {fn})
+            """)
 
-        # Performance Metrics
-        metrics = {
-            "민감도 (Sensitivity/Recall)": recall_score(y_true, y_pred),
-            "특이도 (Specificity)": cm[0, 0] / (cm[0, 0] + cm[0, 1]),
-            "정확도 (Accuracy)": accuracy_score(y_true, y_pred),
-            "정밀도 (Precision)": precision_score(y_true, y_pred),
-            "F1 Score": f1_score(y_true, y_pred),
-            "양성예측도 (Positive Predictive Value, PPV)": ppv,
-            "음성예측도 (Negative Predictive Value, NPV)": npv
-        }
+            # 정밀도 (Precision)
+            precision = tp / (tp + fp)
+            st.markdown(f"""
+            **정밀도 (Precision):** {precision:.4f}
+            * 설명: 모델이 양성으로 예측한 것 중 실제 양성인 비율
+            * 계산식: TP / (TP + FP) = {tp} / ({tp} + {fp})
+            """)
 
-        for metric, value in metrics.items():
-            st.write(f"**{metric}: {value:.4f}**")
+            # F1 Score
+            f1 = 2 * (precision * sensitivity) / (precision + sensitivity)
+            st.markdown(f"""
+            **F1 Score:** {f1:.4f}
+            * 설명: 정밀도와 민감도(재현율)의 조화평균
+            * 계산식: 2 * (Precision * Recall) / (Precision + Recall)
+            """)
 
-        # ROC AUC
-        roc_auc = roc_auc_score(y_true, y_score)
-        st.markdown(f"**ROC AUC: {roc_auc:.4f}**")
+            # 양성예측도 (Positive Predictive Value, PPV)
+            ppv = tp / (tp + fp)
+            st.markdown(f"""
+            **양성예측도 (Positive Predictive Value, PPV):** {ppv:.4f}
+            * 설명: 모델이 양성으로 예측한 경우 중 실제로 양성인 비율
+            * 계산식: TP / (TP + FP) = {tp} / ({tp} + {fp})
+            """)
+
+            # 음성예측도 (Negative Predictive Value, NPV)
+            npv = tn / (tn + fn)
+            st.markdown(f"""
+            **음성예측도 (Negative Predictive Value, NPV):** {npv:.4f}
+            * 설명: 모델이 음성으로 예측한 경우 중 실제로 음성인 비율
+            * 계산식: TN / (TN + FN) = {tn} / ({tn} + {fn})
+            """)
+            
+            # ROC of AUC
+            st.markdown(f"""
+            **ROC AUC (Receiver Operating Characteristic Area Under the Curve):** {roc_auc:.4f}
+            * 설명: 모든 가능한 분류 임계값에서 모델의 성능을 종합적으로 평가하는 지표
+            * 해석: 0.5는 랜덤 분류기의 성능, 1.0은 완벽한 분류기의 성능, 일반적으로 0.8 이상이면 좋은 모델로 간주
+            """)
+
 
         # ROC Curve
         fpr, tpr, thresholds = roc_curve(y_true, y_score)
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', name=f'ROC curve (AUC = {roc_auc:.4f})'))
-        fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Random', line=dict(dash='dash')))
+        fig.add_trace(go.Scatter(
+            x=fpr, y=tpr, 
+            mode='lines', 
+            name=f'ROC curve (AUC = {roc_auc:.4f})',
+            hovertemplate='FPR: %{x:.3f}<br>TPR: %{y:.3f}<extra></extra>'
+        ))
+        fig.add_trace(go.Scatter(
+            x=[0, 1], y=[0, 1], 
+            mode='lines', 
+            name='Random', 
+            line=dict(dash='dash'),
+            hovertemplate='FPR: %{x:.3f}<br>TPR: %{y:.3f}<extra></extra>'
+        ))
 
         # 주어진 threshold에 가장 가까운 값을 찾아 그리기
         idx = np.argmin(np.abs(thresholds - threshold))
-        fig.add_trace(go.Scatter(x=[fpr[idx]], y=[tpr[idx]], 
-                                mode='markers', 
-                                name=f'Threshold ({threshold:.2f})', 
-                                marker=dict(size=10)))
+        fig.add_trace(go.Scatter(
+            x=[fpr[idx]], y=[tpr[idx]], 
+            mode='markers', 
+            name=f'Threshold ({threshold:.2f})', 
+            marker=dict(size=10),
+            hovertemplate='FPR: %{x:.3f}<br>TPR: %{y:.3f}<br>Threshold: ' + f'{threshold:.2f}' + '<extra></extra>'
+        ))
 
         fig.update_layout(
             title='Receiver Operating Characteristic (ROC) Curve',
@@ -322,27 +415,37 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
         # 데이터 준비
         indices = list(range(len(y_score)))
         y_pred = (y_score > threshold).astype(int)
+        # 색상과 모양 정의
+        color_map = {0: 'blue', 1: 'red'}
+        symbol_map = {0: 'circle', 1: 'diamond'}
+        
         # Scatter plot 생성
         fig = go.Figure()
-        # Ground truth에 따라 색상 지정
-        colors = ['blue' if gt == 0 else 'red' for gt in y_true]
-        # 임계값에 따른 분류 결과에 따라 모양 지정
-        symbols = ['circle' if pred == 0 else 'diamond' for pred in y_pred]
 
-        # Scatter plot 추가
-        fig.add_trace(go.Scatter(
-            x=indices,
-            y=y_score,
-            mode='markers',
-            marker=dict(
-                color=colors,
-                symbol=symbols,
-                size=10
-            ),
-            text=[f'Score: {score:.2f}<br>Predicted: {"Negative" if pred == 0 else "Positive"}<br>Actual: {"Negative" if true == 0 else "Positive"}' 
-                for score, pred, true in zip(y_score, y_pred, y_true)],
-            hoverinfo='text'
-        ))
+        # 각 카테고리에 대한 scatter trace 추가
+        categories = [
+            ('True Negative', 0, 0),
+            ('False Positive', 0, 1),
+            ('False Negative', 1, 0),
+            ('True Positive', 1, 1)
+        ]
+
+        for category, true_val, pred_val in categories:
+            mask = (y_true == true_val) & (y_pred == pred_val)
+            fig.add_trace(go.Scatter(
+                x=np.array(indices)[mask],
+                y=y_score[mask],
+                mode='markers',
+                name=category,
+                marker=dict(
+                    color=color_map[true_val],
+                    symbol=symbol_map[pred_val],
+                    size=10
+                ),
+                text=[f'Score: {score:.2f}<br>Predicted: {"Negative" if pred == 0 else "Positive"}<br>Actual: {"Negative" if true == 0 else "Positive"}' 
+                    for score, pred, true in zip(y_score[mask], y_pred[mask], y_true[mask])],
+                hoverinfo='text'
+            ))
 
         # 임계값 선 추가
         fig.add_hline(y=threshold, line_dash="dash", line_color="green", annotation_text="Threshold")
@@ -352,14 +455,25 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
             title='데이터 분포 파악: Scores, Predictions, Threshold, and Ground Truth',
             xaxis_title='Data Point Index',
             yaxis_title='Score',
-            showlegend=False
+            showlegend=True,
+            legend=dict(
+                x=1.05,
+                y=1,
+                title_text='Categories',
+                bgcolor='rgba(255,255,255,0.8)',
+                bordercolor='rgba(0,0,0,0.2)',
+                borderwidth=1
+            ),
+            width=800,  # 그래프 너비 증가
+            height=500,
+            margin=dict(r=200)  # 오른쪽 여백 증가
         )
         st.plotly_chart(fig)
         
         
         st.header("(부록)분석 결과에 대한 통계적 검정 결과")
-        st.markdown("**Confusion Matrix 결과에 대한 통계검정**")
-
+        # st.markdown("**Confusion Matrix 결과에 대한 통계검정**")
+        
         tests = [
             accuracy_binomial_test(y_true, y_pred),
             auc_confidence_interval(y_true, y_score),
@@ -368,14 +482,18 @@ def analyze_performance(df: pd.DataFrame, pred_col: str, gt_col: str, positive_l
             cohen_kappa(y_true, y_pred),
             fishers_exact_test(y_true, y_pred)
         ]
+        # 두 개의 컬럼 생성
+        col1, col2 = st.columns(2)
 
-        for test in tests:
-            st.subheader(test['method'])
-            st.write(test['description'])
-            for key, value in test.items():
-                if key not in ['method', 'description']:
-                    st.write(f"{key}: {value}")
-            st.write("---")
+        # 각 컬럼에 3개의 검정 결과를 표시
+        for i, test in enumerate(tests):
+            with col1 if i < 3 else col2:
+                st.subheader(test['method'])
+                st.write(test['description'])
+                for key, value in test.items():
+                    if key not in ['method', 'description']:
+                        st.write(f"{key}: {value}")
+                st.write("---")
 
     except Exception as e:
         st.error(f"분석 중 오류가 발생했습니다: {str(e)}")
@@ -460,7 +578,8 @@ if __name__ == "__main__":
     
 """
 --------------------------------------------------------------------
-**요구사항 목록**  
+**요구사항: 누구나 AI분석 결과 데이터를 이용해 분류 성능 평가할 수 있게 하기**  
+
   
 **1. 파일 업로드**
  - AI 분석 결과와 정답이 포함된 csv, excel 등 파일을 사용자가 선택 -> 로드
@@ -470,8 +589,8 @@ if __name__ == "__main__":
     - 컬럼 수와 컬럼 속성 표시
     - (미구현)데이터 차트 미리보기-컬럼 속성에 따라 적절한 plot 선택
 
-**2. 분석을 위한 사전 설정**
- - 분석 대상 컬럼 선택
+**2. 성능평가를 위한 사전 설정**
+ - 평가 대상 컬럼 선택
     - 자동으로 AI score와 정답 컬럼 추천
     - 사용자가 드롭다운에서 선택 가능하며 분석 시 확정 (컬럼 load)
  - 정답 컬럼의 양성 레이블 선택 (정답 컬럼 load)
@@ -479,7 +598,7 @@ if __name__ == "__main__":
 
 **3. 분석**
  - 위 설정한 정보로 분석 시도
- - 분석 실패 시 재시도
+ - 분석 실패 시 재시도, 파일 업로드 시 초기화, threshold 변경 시 초기화, 분석 시도 시 결과 재출력
  - Confusion Matrix
  - Classification Report
  - 예측 스코어 분포
@@ -489,6 +608,8 @@ if __name__ == "__main__":
  - 다양한 검정 결과 표시
  
 **5. 그 외**
+ - 누구나 사용: 각 local에서 실행할 수 있게 배포하거나 웹서비스로 접속할 수 있게 하거나 -> streamlit으로 웹서비스
+ - 유지보수 최소화: 파일을 저장하거나 DB를 사용하지 않을 것, 비용이 들지 않을 것
  - (미구현)사전에 분석에 사용할 데이터 수를 순차적으로 또는 랜덤으로 선택하도록 함. (원하는 성능을 내도록 조정이 필요한 경우)
 
  - (미구현)데이터 파악 시 컬럼 속성에 따른 디스플레이 방법은 chatGPT 의존하거나, 룰베이스로 자동 시각화하도록 구성. -> chatGPT 의존도 낮춰야할 것
